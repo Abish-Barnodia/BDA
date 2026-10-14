@@ -1,10 +1,51 @@
-# Web Log Analytics Pipeline — Spark, HDFS & Airflow
+# 53. Batch MapReduce Clickstream Log Analysis
 
-A fully containerised batch analytics pipeline that processes 3.3 GB / 10.3 M+ Nginx access log lines from zanbil.ir (an e-commerce site) through a Bronze → Silver → Gold medallion architecture on HDFS, orchestrated by Apache Airflow.
-
-**Dataset:** [Web Server Access Logs — Kaggle](https://www.kaggle.com/datasets/eliasdabbas/web-server-access-logs) (`access.log` + `client_hostname.csv`, ~3.3 GB). Raw data files are not committed to this repo — see [Data](#data) below.
+A complete, containerised big data analytics pipeline adhering to **Problem Statement 53**:
+* **HDFS Storage**: Raw clickstream logs stored across HDFS DataNodes.
+* **MapReduce Pipeline**: High-performance Python Hadoop Streaming jobs (Mappers & Reducers).
+* **YARN Cluster Scheduling**: ResourceManager & NodeManager managing distributed compute.
+* **Analytical Reports**: **Peak-Traffic-Hour**, **Top-10-Page**, and **Error-Rate** reports.
+* **Interactive Batch Dashboard**: Real-time KPI cards & visual analytics charts (`http://localhost:8501`).
 
 ---
+
+## Quick Start (MapReduce on YARN Pipeline)
+
+### 1. Start the Hadoop HDFS & YARN Cluster
+```bash
+docker compose up -d hdfs-namenode hdfs-datanode resourcemanager nodemanager
+```
+
+* **HDFS Web UI**: [http://localhost:19870](http://localhost:19870)
+* **YARN ResourceManager UI**: [http://localhost:8088](http://localhost:8088)
+
+### 2. Run the End-to-End Batch MapReduce Pipeline
+```bash
+# Ingests dataset to HDFS, submits all 3 MapReduce jobs to YARN, and exports reports
+docker exec resourcemanager bash /opt/scripts/run_mapreduce_yarn.sh
+```
+*Processes the Kaggle E-Commerce Dataset (`ecommerce_dataset/events.csv` with 80,000 clickstream events and `orders.csv` with 20,000 transaction records) directly on the Hadoop YARN cluster.*
+
+### 3. Launch the Interactive Batch Report Dashboard
+```bash
+python dashboard/server.py
+```
+Open **[http://localhost:8501](http://localhost:8501)** in your browser to inspect the live analytics dashboard!
+*(A Streamlit alternative is also available: `streamlit run dashboard/app.py`)*
+
+---
+
+## MapReduce Analytical Jobs
+
+| Job | Mapper (`mapreduce/`) | Reducer (`mapreduce/`) | Output File (`output/`) | Description |
+|---|---|---|---|---|
+| **1. Peak Traffic Hour** | `peak_hour_mapper.py` | `peak_hour_reducer.py` | `peak_traffic.tsv` | Aggregates hourly requests and isolates the peak operating hour |
+| **2. Top-10 Pages** | `top10_pages_mapper.py` | `top10_pages_reducer.py` | `top_10_pages.tsv` | Bounded min-heap extracting the Top 10 most visited pages/endpoints |
+| **3. Error Rate Analysis** | `error_rate_mapper.py` | `error_rate_reducer.py` | `error_rates.tsv` | Computes hourly request count, error count, and error rate percentage |
+
+---
+
+# Secondary Architecture: Web Log Analytics Pipeline (Spark & Airflow)
 
 ## Architecture
 

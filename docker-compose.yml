@@ -38,6 +38,10 @@ services:
     volumes:
       - hdfs-nn-data:/hadoop/dfs/name
       - ./spark-apps:/opt/spark-apps
+      - ./mapreduce:/opt/mapreduce
+      - ./data:/opt/data
+      - ./hadoop-config/yarn-site.xml:/etc/hadoop/yarn-site.xml
+      - ./hadoop-config/mapred-site.xml:/etc/hadoop/mapred-site.xml
     networks:
       - hadoopnet
     healthcheck:
@@ -61,6 +65,51 @@ services:
       - hdfs-dn-data:/hadoop/dfs/data
     networks:
       - hadoopnet
+
+  # ── YARN Resource Manager ─────────────────────────────────────────────────
+  resourcemanager:
+    image: bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
+    container_name: resourcemanager
+    environment:
+      - CLUSTER_NAME=hadoop-cluster
+      - CORE_CONF_fs_defaultFS=hdfs://hdfs-namenode:9000
+      - YARN_CONF_yarn_resourcemanager_hostname=resourcemanager
+    ports:
+      - "8088:8088"
+    volumes:
+      - ./hadoop-config/yarn-site.xml:/etc/hadoop/yarn-site.xml
+      - ./hadoop-config/mapred-site.xml:/etc/hadoop/mapred-site.xml
+      - ./mapreduce:/opt/mapreduce
+      - ./data:/opt/data
+      - ./output:/opt/output
+    networks:
+      - hadoopnet
+    depends_on:
+      hdfs-namenode:
+        condition: service_healthy
+
+  # ── YARN Node Manager ─────────────────────────────────────────────────────
+  nodemanager:
+    image: bde2020/hadoop-nodemanager:2.0.0-hadoop3.2.1-java8
+    container_name: nodemanager
+    environment:
+      - CLUSTER_NAME=hadoop-cluster
+      - CORE_CONF_fs_defaultFS=hdfs://hdfs-namenode:9000
+      - YARN_CONF_yarn_resourcemanager_hostname=resourcemanager
+      - YARN_CONF_yarn_nodemanager_resource_memory__mb=4096
+      - YARN_CONF_yarn_nodemanager_vmem__check__enabled=false
+    ports:
+      - "8042:8042"
+    volumes:
+      - ./hadoop-config/yarn-site.xml:/etc/hadoop/yarn-site.xml
+      - ./hadoop-config/mapred-site.xml:/etc/hadoop/mapred-site.xml
+      - ./mapreduce:/opt/mapreduce
+      - ./data:/opt/data
+      - ./output:/opt/output
+    networks:
+      - hadoopnet
+    depends_on:
+      - resourcemanager
 
   # ── Spark ──────────────────────────────────────────────────────────────────
   # apache/spark:3.5.6 official image — requires explicit spark-class commands

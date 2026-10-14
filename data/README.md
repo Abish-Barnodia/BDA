@@ -1,0 +1,1 @@
+# Raw clickstream data directory
